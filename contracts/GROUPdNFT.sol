@@ -33,14 +33,14 @@ contract GROUP_dNFT is Initializable, ERC721Upgradeable,
             //__UUPSUpgradeable_init();
         }
 
-        function mint(address to) public payable {
-            require(balanceOf(to) == 0, "You are only allowed to mint one NFT to user and have already minted one");
+        function mint() public payable {
+            require(balanceOf(msg.sender) == 0, "You are only allowed to mint one NFT to user and have already minted one");
             require(msg.value == 0.0001 ether, "Minting requires a payment of EXACTLY 0.0001 ether");
-            _safeMint(to , nextTokenId);
+            _safeMint(msg.sender , nextTokenId);
             tokensSiteVisits[nextTokenId] = 0;
             nextTokenId++;
 
-            emit MintedNFT(nextTokenId - 1, to);
+            emit MintedNFT(nextTokenId - 1, msg.sender);
         }
 
         function tokenURI(uint256 tokenId) public view override returns (string memory) {
