@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GROUP dNFT</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d1a;
+      color: #e0e0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 36px;
+    }
+
+    /* ── Wallet button ── */
+    #connect-btn {
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    #connect-btn:hover:not(:disabled) { background: #6d28d9; }
+    #connect-btn:disabled { opacity: 0.45; cursor: default; }
+
+    #wallet-info {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #7c3aed;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── NFT card ── */
+    #nft-card {
+      display: none;
+      margin-top: 44px;
+      width: 340px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #13132b;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      transition: box-shadow 0.5s ease;
+    }
+    #nft-card.evolved {
+      box-shadow: 0 0 0 2px #a78bfa, 0 0 48px rgba(167,139,250,0.45), 0 8px 40px rgba(0,0,0,0.6);
+    }
+
+    /* evolved banner sits above the image */
+    #evolved-banner {
+      display: none;
+      background: linear-gradient(90deg, #7c3aed, #ec4899);
+      color: #fff;
+      text-align: center;
+      padding: 9px 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #evolved-banner.show { display: block; }
+
+    #nft-image {
+      width: 100%;
+      height: 300px;
+      object-fit: cover;
+      background: #1e1e3a;
+      display: block;
+      transition: opacity 0.5s ease;
+    }
+    #nft-image.loading { opacity: 0.3; }
+
+    .card-body { padding: 22px 20px 24px; }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .card-token {
+      font-size: 0.8rem;
+      color: #555;
+      margin-bottom: 22px;
+    }
+
+    /* ── Visit counter row ── */
+    .visit-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .visit-label { font-size: 0.85rem; color: #888; }
+    .visit-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #a78bfa;
+      transition: transform 0.15s ease;
+    }
+    .visit-value.bump {
+      transform: scale(1.35);
+    }
+    .visit-target { font-size: 0.75rem; color: #444; }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      width: 100%;
+      height: 5px;
+      background: #1e1e3a;
+      border-radius: 3px;
+      margin-bottom: 22px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      border-radius: 3px;
+      transition: width 0.35s ease;
+      width: 0%;
+    }
+
+    /* ── Visit button ── */
+    #visit-btn {
+      width: 100%;
+      padding: 13px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    #visit-btn:hover:not(:disabled) { background: #6d28d9; }
+    #visit-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── Reset button ── */
+    #reset-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      background: transparent;
+      color: #f87171;
+      border: 1px solid #f87171;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    #reset-btn:hover:not(:disabled) { background: rgba(248,113,113,0.1); }
+    #reset-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── Status message ── */
+    #status {
+      margin-top: 18px;
+      font-size: 0.82rem;
+      color: #666;
+      text-align: center;
+      min-height: 18px;
+    }
+    #status.err   { color: #f87171; }
+    #status.ok    { color: #4ade80; }
+    #status.info  { color: #93c5fd; }
+  </style>
+</head>
+<body>
+
+  <h1>GROUP dNFT</h1>
+  <p class="subtitle">Dynamic NFT — evolves after 15 site visits</p>
+
+  <button id="connect-btn">Connect Wallet</button>
+  <div id="wallet-info"></div>
+
+  <div id="nft-card">
+    <div id="evolved-banner">✦ NFT EVOLVED ✦</div>
+    <img id="nft-image" src="" alt="NFT" />
+    <div class="card-body">
+      <div class="card-title" id="nft-name">GROUP dNFT</div>
+      <div class="card-token" id="nft-token">Token #—</div>
+
+      <div class="visit-row">
+        <span class="visit-label">Site Visits</span>
+        <span>
+          <span class="visit-value" id="visit-count">0</span>
+          <span class="visit-target"> / 15</span>
+        </span>
+      </div>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <button id="visit-btn">Register Visit</button>
+      <button id="reset-btn">Reset Visits</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+<script>
+  const SERVER = 'http://localhost:3000';
+  const SIGN_MSG = 'Welcome to the Club! Please sign this message to verify your wallet ownership.';
+  const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 — Ethereum Sepolia
+
+  async function ensureSepolia() {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId === SEPOLIA_CHAIN_ID) return;
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: SEPOLIA_CHAIN_ID }],
+      });
+    } catch (switchErr) {
+      // Chain not added to MetaMask yet — add it
+      if (switchErr.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: SEPOLIA_CHAIN_ID,
+            chainName: 'Sepolia',
+            nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['https://rpc.sepolia.org'],
+            blockExplorerUrls: ['https://sepolia.etherscan.io'],
+          }],
+        });
+      } else {
+        throw switchErr;
+      }
+    }
+  }
+
+  let walletAddress = null;
+  let signature = null;
+  let tokenId = null;
+  let gatewayToken = '';
+
+  const connectBtn   = document.getElementById('connect-btn');
+  const walletInfo   = document.getElementById('wallet-info');
+  const nftCard      = document.getElementById('nft-card');
+  const nftImage     = document.getElementById('nft-image');
+  const nftName      = document.getElementById('nft-name');
+  const nftToken     = document.getElementById('nft-token');
+  const visitCount   = document.getElementById('visit-count');
+  const progressFill = document.getElementById('progress-fill');
+  const visitBtn     = document.getElementById('visit-btn');
+  const resetBtn     = document.getElementById('reset-btn');
+  const evolvedBanner = document.getElementById('evolved-banner');
+  const statusEl     = document.getElementById('status');
+
+  function setStatus(msg, type = '') {
+    statusEl.textContent = msg;
+    statusEl.className = type;
+  }
+
+  function setProgress(count) {
+    const pct = Math.min((count / 15) * 100, 100);
+    progressFill.style.width = pct + '%';
+  }
+
+  function bumpCounter(count) {
+    visitCount.textContent = count;
+    visitCount.classList.add('bump');
+    setTimeout(() => visitCount.classList.remove('bump'), 200);
+    setProgress(count);
+  }
+
+  // Convert ipfs:// URIs to a Pinata gateway URL for browser fetch
+  function toHttp(url) {
+    if (url && url.startsWith('ipfs://')) {
+      return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+    }
+    return url;
+  }
+
+  async function loadImage(metadataURL) {
+    console.log('[loadImage] fetching metadata from:', metadataURL);
+    nftImage.classList.add('loading');
+    nftImage.src = '';
+    try {
+      const resp = await fetch(toHttp(metadataURL), { cache: 'no-store' });
+      if (!resp.ok) throw new Error('metadata fetch failed — HTTP ' + resp.status);
+      const meta = await resp.json();
+      console.log('[loadImage] metadata:', meta);
+      if (meta.name) nftName.textContent = meta.name;
+      let imgURL = toHttp(meta.image || '');
+      if (gatewayToken && imgURL.includes('mypinata.cloud')) {
+        imgURL += (imgURL.includes('?') ? '&' : '?') + `pinataGatewayToken=${gatewayToken}`;
+      }
+      console.log('[loadImage] setting image src:', imgURL);
+      nftImage.src = imgURL;
+    } catch (e) {
+      console.error('[loadImage] error:', e);
+      setStatus('Could not load image from IPFS — check Pinata CID', 'err');
+    } finally {
+      nftImage.classList.remove('loading');
+    }
+  }
+
+  function markEvolved() {
+    nftCard.classList.add('evolved');
+    evolvedBanner.classList.add('show');
+    visitBtn.disabled = true;
+    visitBtn.textContent = 'Fully Evolved';
+  }
+
+  async function initNFT() {
+    const statusResp = await fetch(`${SERVER}/nft-status/${tokenId}`);
+    if (!statusResp.ok) throw new Error('Could not load NFT status');
+    const data = await statusResp.json();
+
+    if (data.gatewayToken) gatewayToken = data.gatewayToken;
+    bumpCounter(data.serverVisits);
+    nftToken.textContent = `Token #${tokenId}`;
+    nftCard.style.display = 'block';
+
+    if (data.evolved) markEvolved();
+
+    await loadImage(data.metadataURL);
+  }
+
+  // ── Connect wallet ──────────────────────────────────────────────
+  connectBtn.addEventListener('click', async () => {
+    if (!window.ethereum) {
+      setStatus('MetaMask not detected — please install it first.', 'err');
+      return;
+    }
+    connectBtn.disabled = true;
+    setStatus('Connecting wallet…', 'info');
+
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      walletAddress = accounts[0];
+      console.log('[connect] wallet:', walletAddress);
+
+      setStatus('Checking network…', 'info');
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      console.log('[connect] chainId:', chainId, '(Sepolia = 0xaa36a7)');
+      await ensureSepolia();
+
+      setStatus('Sign the message in MetaMask to verify ownership…', 'info');
+      signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [SIGN_MSG, walletAddress],
+      });
+      console.log('[connect] signature obtained');
+
+      setStatus('Verifying NFT ownership…', 'info');
+      const vResp = await fetch(`${SERVER}/verify-nft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, signature }),
+      });
+      const vData = await vResp.json();
+      console.log('[connect] verify-nft response:', vData);
+
+      if (!vData.authorized) {
+        setStatus(vData.message || 'Not authorised', 'err');
+        connectBtn.disabled = false;
+        return;
+      }
+
+      setStatus('Looking up your token…', 'info');
+      const tResp = await fetch(`${SERVER}/my-token/${walletAddress}`);
+      const tData = await tResp.json();
+      console.log('[connect] my-token response:', tData);
+
+      if (!tData.hasNFT) {
+        setStatus('No NFT found for this wallet. Mint one first.', 'err');
+        connectBtn.disabled = false;
+        return;
+      }
+
+      tokenId = tData.tokenId;
+      walletInfo.textContent = `${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}`;
+      connectBtn.textContent = 'Connected';
+      setStatus('');
+
+      await initNFT();
+    } catch (err) {
+      if (err.code === 4001) {
+        setStatus('Signature rejected.', 'err');
+      } else {
+        setStatus('Error: ' + err.message, 'err');
+      }
+      connectBtn.disabled = false;
+    }
+  });
+
+  // ── Reset visits (owner only) ───────────────────────────────────
+  resetBtn.addEventListener('click', async () => {
+    if (!tokenId) return;
+    if (!confirm(`Reset all visits for Token #${tokenId} to 0? This calls the smart contract.`)) return;
+    resetBtn.disabled = true;
+    setStatus('Resetting visits on-chain…', 'info');
+
+    try {
+      const resp = await fetch(`${SERVER}/reset-visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId, walletAddress, signature }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        setStatus(data.error || 'Reset failed', 'err');
+        resetBtn.disabled = false;
+        return;
+      }
+
+      bumpCounter(0);
+
+      // Un-evolve the card if it was evolved
+      nftCard.classList.remove('evolved');
+      evolvedBanner.classList.remove('show');
+      visitBtn.disabled = false;
+      visitBtn.textContent = 'Register Visit';
+
+      // Reload metadata (back to 0.json)
+      const sResp = await fetch(`${SERVER}/nft-status/${tokenId}`);
+      const sData = await sResp.json();
+      await loadImage(sData.metadataURL);
+
+      setStatus('Visits reset to 0.', 'ok');
+    } catch (err) {
+      setStatus('Error: ' + err.message, 'err');
+    }
+    resetBtn.disabled = false;
+  });
+
+  // ── Register visit ──────────────────────────────────────────────
+  visitBtn.addEventListener('click', async () => {
+    if (!tokenId) return;
+    visitBtn.disabled = true;
+
+    try {
+      const resp = await fetch(`${SERVER}/increment-visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId, walletAddress, signature }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        setStatus(data.error || 'Error recording visit', 'err');
+        visitBtn.disabled = false;
+        return;
+      }
+
+      bumpCounter(data.visits);
+
+      if (data.evolved) {
+        setStatus('NFT evolved! Loading new metadata…', 'ok');
+        markEvolved();
+
+        // Fetch updated metadata URL from server then reload the image
+        const sResp = await fetch(`${SERVER}/nft-status/${tokenId}`);
+        const sData = await sResp.json();
+        await loadImage(sData.metadataURL);
+        setStatus('Your NFT has evolved!', 'ok');
+      } else {
+        const remaining = 15 - data.visits;
+        setStatus(`Visit recorded — ${remaining} more to evolve.`);
+        visitBtn.disabled = false;
+      }
+    } catch (err) {
+      setStatus('Error: ' + err.message, 'err');
+      visitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

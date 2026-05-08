@@ -20,6 +20,7 @@ contract GROUP_dNFT is Initializable, ERC721Upgradeable,
         event MintedNFT(uint256 tokenId, address owner);
         event PointsUpdated(uint256 tokenId, uint256 points);
         event UpdatedMetadata(uint256 tokenId);
+        event VisitsReset(uint256 tokenId);
 
         ///@custom:oz-upgrades-unsafe-allow constructor
         constructor() {
@@ -35,7 +36,6 @@ contract GROUP_dNFT is Initializable, ERC721Upgradeable,
 
         function mint() public payable {
             require(balanceOf(msg.sender) == 0, "You are only allowed to mint one NFT to user and have already minted one");
-            require(msg.value == 0.0001 ether, "Minting requires a payment of EXACTLY 0.0001 ether");
             _safeMint(msg.sender , nextTokenId);
             tokensSiteVisits[nextTokenId] = 0;
             nextTokenId++;
@@ -45,7 +45,6 @@ contract GROUP_dNFT is Initializable, ERC721Upgradeable,
 
         function tokenURI(uint256 tokenId) public view override returns (string memory) {
             require(_ownerOf(tokenId) != address(0), "ERC721Metadata: URI query for nonexistent token");
-            require(_ownerOf(tokenId) == msg.sender, "You are not the owner of this token");
 
             if (tokensSiteVisits[tokenId] < 15) {
                 return string(abi.encodePacked(baseURI, "0.json"));
@@ -72,6 +71,12 @@ contract GROUP_dNFT is Initializable, ERC721Upgradeable,
             tokensSiteVisits[tokenId] = tokensSiteVisits[tokenId] + points;
 
             emit PointsUpdated(tokenId, tokensSiteVisits[tokenId]);
+            emit UpdatedMetadata(tokenId);
+        }
+
+        function resetVisits(uint256 tokenId) public onlyOwner {
+            tokensSiteVisits[tokenId] = 0;
+            emit VisitsReset(tokenId);
             emit UpdatedMetadata(tokenId);
         }
 
